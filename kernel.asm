@@ -1,7 +1,7 @@
 %include "init.inc"
 [org 0x10000]
 [bits 16]
-
+;============git test============
 start:
   cld
   mov ax, cs
