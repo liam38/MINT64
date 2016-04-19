@@ -3,8 +3,8 @@
 void main(int argc, char* argv[]) {
 	printf("Kernel Study");
 	printf("Tell his world");
-	printf("TALK TALK!!");
+	printf("PLEASE TAKE COFFEE");
 //after commit
 	printf("Type Anything");
-	printf("TANK GOGO");
+	printf("LAST PRACTICE");
 }
