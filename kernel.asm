@@ -3,29 +3,29 @@
 [bits 16]
 
 start:
-  cld
+  cld 
   mov ax, cs
   mov ds, ax
   xor ax, ax
   mov ss, ax
 
-  xor ebx, ebx
-  lea eax, [tss1]
+  xor eax, eax
+  lea eax, [tss]
   add eax, 0x10000
   mov [descriptor4+2], ax
   shr eax, 16
   mov [descriptor4+4], al
   mov [descriptor4+7], ah
 
-  lea eax, [tss2]
+  xor eax, eax
+  lea eax, [printf]
   add eax, 0x10000
-  mov [descriptor5+2], ax
+  mov [descriptor7], ax
   shr eax, 16
-  mov [descriptor5+4], al
-  mov [descriptor5+7], ah
+  mov [descriptor7+6], al
+  mov [descriptor7+7], ah
 
-  cli
-
+  cli 
   lgdt [gdtr]
 
   mov eax, cr0
@@ -49,25 +49,38 @@ PM_Start:
 
   lea esp, [PM_Start]
 
-  mov ax, TSS1Selector
-  ltr ax                    ; LTR ) CPU TR reg.에 TSS descriptor의 selector 값 저장
-  lea eax, [process2]       ; TSS1Selector ) task switching에 의해 저장되어야 할 곳.
-  mov [tss2_eip], eax       ; eip에 저장된 주소로부터 다음 명령어 실행
-  mov [tss2_esp], esp       ; 스택 포인터
+  mov ax, TSSSelector
+  ltr ax
 
-  jmp TSS2Selector:0        ; 실제 task switching 이 일어나는 곳.
+  mov [tss_esp0], esp
+  lea eax, [PM_Start-256]
+  mov [tss_esp], eax
 
-  mov edi, 80*2*9
-  lea esi, [msg_process1]
-  call printf
-  jmp $
+  mov ax, UserDataSelector
+  mov ds, ax
+  mov es, ax
+  mov fs, ax
+  mov gs, ax
 
-;============Subroutines============
-printf:
+  lea esp, [PM_Start-256]
+
+  push dword UserDataSelector
+  push esp
+  push dword 0x200
+  push dword UserCodeSelector
+  lea eax, [user_process]
   push eax
+  iretd
+
+; =============Subroutines============
+printf:
+  mov ebp, esp
   push es
+  push eax
   mov ax, VideoSelector
   mov es, ax
+  mov esi, [ebp+8]
+  mov edi, [ebp+12]
 
   printf_loop:
     mov al, byte [esi]
@@ -81,23 +94,24 @@ printf:
     jmp printf_loop
 
 printf_end:
-  pop es
   pop eax
+  pop es
   ret
 
-process2:                 ; jmp TSS2Selector:0 으로 인해 실행되는 지점
-  mov edi, 80*2*7         ; eip = process2의 주소
-  lea esi, [msg_process2]
-  call printf
-  jmp TSS1Selector:0      ;tss1 에 저장되어 있는 값들 복귀(eip 역시)
+user_process:
+  mov edi, 80*2*7
+  push edi
+  lea eax, [msg_user_parameter1]
+  push eax
+  call 0x38:0
+  jmp $
 
-;=============Data Area=============
-msg_process1 db "This is System Process 1", 0
-msg_process2 db "This is System Process 2", 0
+msg_user_parameter1 db "This is User Parameter 1", 0
 
+;============Data Area=============
 gdtr:
   dw gdt_end - gdt - 1
-  dd gdt
+  dd gdt 
 
   gdt:
     dd 0, 0
@@ -105,7 +119,7 @@ gdtr:
     dd 0x0000FFFF, 0x00CF9200
     dd 0x8000FFFF, 0x0040920B
 
-    descriptor4:              ;TSS1 descriptor(8byte = 64bits)
+    descriptor4:
       dw 104
       dw 0
       db 0
@@ -113,58 +127,43 @@ gdtr:
       db 0
       db 0
 
-    descriptor5:              ;TSS2 descriptor (8byte = 64bits)
-      dw 104
+      dd 0x0000FFFF, 0x00FCFA00
+      dd 0x0000FFFF, 0x00FCF200
+
+    descriptor7:
       dw 0
+      dw SysCodeSelector
+      db 0x02
+      db 0xEC
       db 0
-      db 0x89
-      db 0
       db 0
 
-gdt_end:
+  gdt_end:
 
-tss1:                         ; TSS1Selector 의 base가 가리키는 위치
-  dw 0, 0                     ; 실질적인 tss1 영역
-  dd 0
-  dw 0, 0
-  dd 0
-  dw 0, 0
-  dd 0
-  dw 0, 0
-  dd 0, 0, 0
-  dd 0, 0, 0, 0
-  dd 0, 0, 0, 0
-  dw 0, 0
-  dw 0, 0
-  dw 0, 0
-  dw 0, 0
-  dw 0, 0
-  dw 0, 0
-  dw 0, 0
+tss:
   dw 0, 0
 
-tss2:
-  dw 0, 0
+tss_esp0:
   dd 0
-  dw 0, 0
+  dw SysDataSelector, 0
   dd 0
   dw 0, 0
   dd 0
   dw 0, 0
   dd 0
 
-tss2_eip:
+tss_eip:
   dd 0, 0
   dd 0, 0, 0, 0
 
-tss2_esp:
+tss_esp:
   dd 0, 0, 0, 0
-  dw SysDataSelector, 0
-  dw SysCodeSelector, 0
-  dw SysDataSelector, 0
-  dw SysDataSelector, 0
-  dw SysDataSelector, 0
-  dw SysDataSelector, 0
+  dw 0, 0
+  dw 0, 0
+  dw UserDataSelector, 0
+  dw 0, 0
+  dw 0, 0
+  dw 0, 0
   dw 0, 0
   dw 0, 0
 

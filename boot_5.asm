@@ -25,7 +25,7 @@ read:
   mov bx, 0
 
   mov ah, 2
-  mov al, 2
+  mov al, 9
   mov ch, 0
   mov cl, 2
   mov dh, 0
@@ -38,7 +38,7 @@ read:
   xor al, al
   out dx, al
 
-  cli
+  cli 
 
   mov al, 0x11
   out 0x20, al
@@ -74,7 +74,7 @@ read:
 
   jmp 0x1000:0000
 
-msgBack db '.', 0x0A
+msgBack db '.', 0x0A 
 
 times 510-($-$$) db 0
 dw 0xAA55
