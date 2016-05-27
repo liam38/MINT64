@@ -1,6 +1,0 @@
-SysCodeSelector equ 0x08
-SysDataSelector equ 0x10
-VideoSelector equ 0x18
-TSSSelector equ 0x20
-UserCodeSelector equ 0x28+3 		; RPL에 유저모드(11 표시) +3
-UserDataSelector equ 0x30+3 		; +3
