@@ -36,7 +36,7 @@ START:
 
 ;===========disk reset==========
   push imageLoadingString
-  push 2
+  push 1
   push 0
   call PrintMessage
   add sp, 6
@@ -88,7 +88,7 @@ START:
     jmp ReadData
   ReadEnd:
 	push loadingCompleteString
-	push 2
+	push 1
 	push 20
 	call PrintMessage
 	add sp, 6
@@ -97,7 +97,7 @@ START:
 
   HandleDiskError:
     push diskErrorString
-    push 2
+    push 1
     push 20
     call PrintMessage
     add sp, 6
@@ -143,7 +143,7 @@ PrintMessage: 	; PARAM ) x, y, String addr.
     pop bp
     ret
 
-totalSectorCount: 	dw 1024
+totalSectorCount: 	dw 1
 sectorNumber: 		db 0x02
 headNumber:			db 0x00
 trackNumber:		db 0x00
