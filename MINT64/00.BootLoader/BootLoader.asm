@@ -4,6 +4,7 @@
 SECTION .text
 
   jmp 0x07C0:START
+  totalSectorCount: 	dw 2
 
 START:
   mov ax, 0x07C0
@@ -45,7 +46,7 @@ START:
     mov ax, 0
     mov dl, 0
     int 0x13
-    jc HandleDiskError
+    jc ResetError
 
 ;===========disk load============
   mov si, 0x1000
@@ -60,7 +61,7 @@ START:
     sub di, 0x1
 
     mov ah, 0x02
-    mov al, 0x1
+    mov al, 1
     mov ch, byte [trackNumber]
     mov cl, byte [sectorNumber]
     mov dh, byte [headNumber]
@@ -94,6 +95,13 @@ START:
 	add sp, 6
 
 	jmp 0x1000:0000
+
+  ResetError:
+    push diskResetError
+    push 1
+    push 20
+    call PrintMessage
+    add sp, 6
 
   HandleDiskError:
     push diskErrorString
@@ -143,13 +151,14 @@ PrintMessage: 	; PARAM ) x, y, String addr.
     pop bp
     ret
 
-totalSectorCount: 	dw 1
+
 sectorNumber: 		db 0x02
 headNumber:			db 0x00
 trackNumber:		db 0x00
 
 MESSAGE1: 			db "MINT64 OS Boot Loader Start", 0
 
+diskResetError:		db "Reset Error!!", 0
 diskErrorString: 	db "DISK Error!!", 0
 imageLoadingString:	db "OS Image Loading...", 0
 loadingCompleteString:	db "Complete Loading!", 0

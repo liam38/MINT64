@@ -15,3 +15,4 @@ void kPrintString(int iX, int iY, const char* pcString) {
 	for(index=0; pcString[index] != 0; index++)
 		pstScreen[index].bCharacter = pcString[index];
 }
+
