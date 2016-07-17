@@ -9,6 +9,23 @@ START:
   mov ds, ax
   mov es, ax
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; A20 Gate를 활성화
+; BIOS를 통한 전환이 실패시, 시스템 컨트롤 포트로 전환 시도
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+  mov ax, 0x2401
+  int 0x15
+
+  jc A20GateError
+  jmp A20GateSuccess
+
+A20GateError:
+  in al, 0x92
+  or al, 0x02
+  and al, 0xFE
+  out 0x92, al
+
+A20GateSuccess:
   cli
   lgdt[GDTR]
 
