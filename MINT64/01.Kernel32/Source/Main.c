@@ -12,7 +12,7 @@ void Main(void) {
 	DWORD dwEAX, dwEBX, dwECX, dwEDX;
 	char vcVendorString[13] = {0};
 
-	kPrintString(0, 3, "Protected Mode C Language Kernel Started...................[Pass]");
+	kPrintString(0, 3, "Protected Mode C Language Kernel Started....[Pass]");
 
 	kPrintString(0, 4, "Minimum Memory Size Check...................[    ]");
 	if(kIsMemoryEnough() == FALSE) {
