@@ -4,6 +4,7 @@ SECTION .text
 
 ;C언어에서 호출할 수 있도록 이름 노출
 global kInPortByte, kOutPortByte, kLoadGDTR, kLoadTR, kLoadIDTR
+global kEnableInterrupt, kDisableInterrupt, kReadRFLAGS
 
 ; port로부터 1byte 읽음
 ;  PARAM: port No.
@@ -49,4 +50,24 @@ kLoadTR:
 ; PARAM : IDT table의 정보를 저장하는 자료구조의 addr
 kLoadIDTR:
 	lidt[rdi]
+	ret
+
+; Enable Interrupt
+;	PARAM : 없음
+kEnableInterrupt:
+	sti
+	ret
+
+; Disable Interrupt
+;	PARAN : 없음
+kDisableInterrupt:
+	cli
+	ret
+
+; RFLAGS reg load
+;	PARAM : 없음
+kReadRFLAGS:
+	pushfq
+	pop rax
+
 	ret
