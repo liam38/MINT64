@@ -83,8 +83,7 @@ BOOL kInitializeKernel64Area(void) {
 	while((DWORD)pdwCurrentAddress < 0x600000) {
 		*pdwCurrentAddress = 0x00;
 
-		if(*pdwCurrentAddress !=
-				0)
+		if(*pdwCurrentAddress != 0)
 			return FALSE;
 		pdwCurrentAddress++;
 	}

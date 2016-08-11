@@ -4,7 +4,8 @@
 SECTION .text
 
   jmp 0x07C0:START
-  totalSectorCount: 	dw 2
+  totalSectorCount: 	dw 0x02
+  kernel32SectorCount:	dw 0x02
 
 START:
   mov ax, 0x07C0
