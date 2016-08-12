@@ -5,6 +5,7 @@ SECTION .text
 ;C언어에서 호출할 수 있도록 이름 노출
 global kInPortByte, kOutPortByte, kLoadGDTR, kLoadTR, kLoadIDTR
 global kEnableInterrupt, kDisableInterrupt, kReadRFLAGS
+global kReadTSC
 
 ; port로부터 1byte 읽음
 ;  PARAM: port No.
@@ -70,4 +71,17 @@ kReadRFLAGS:
 	pushfq
 	pop rax
 
+	ret
+
+; 타임 스탬프 카운터를 읽어서 반환
+; 	PARAM : 없음
+kReadTSC:
+	push rdx
+
+	rdtsc				; 타임 스탬프 카운터를 읽어서 RDX:RAX에 저장
+
+	shl rdx, 32			; RDX 에 있는 상위 32bit TSC 값과 RAX에 있는
+	or rax, rdx			; 하위 32bit TSC 값을 OR 연산. RAX에 64bit TSC값 저장
+
+	pop rdx
 	ret

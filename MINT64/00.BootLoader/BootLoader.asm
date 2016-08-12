@@ -23,7 +23,7 @@ START:
 
   SCREEN_CLEAR_LOOP:
     mov byte [es:si], 0
-    mov byte [es:si+1], 0x0A
+    mov byte [es:si+1], 0x1E
 
     add si, 2
 
