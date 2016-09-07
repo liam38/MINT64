@@ -85,8 +85,8 @@ global kISRMouse, kISRCoprocessor, kISRHDD1, kISRHDD2, kISRETCInterrupt
 kISRDivideError:
 	KSAVECONTEXT
 
-	mov rdi, 0
-	call kCommonExceptionHandler
+	mov rdi, 0 	; 64bit(IA-32e mode)에서 parameter : Interrupt Vector value.
+	call kCommonExceptionHandler 	; handler 종료시 해당 interrupt에 EOI를 보내주기 위함.
 
 	KLOADCONTEXT
 	iretq
