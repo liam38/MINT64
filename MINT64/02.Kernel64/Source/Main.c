@@ -71,7 +71,8 @@ void Main(void) {
 	kSetCursor(45, iCursorY++);
 	kPrintf("Pass\n");
 
-	// shell의 시작
+	// Idle Task를 생성하고 shell을 시작
+	kCreateTask(TASK_FLAGS_LOWEST | TASK_FLAGS_IDLE, (QWORD)kIdleTask);
 	kStartConsoleShell();
 }
 

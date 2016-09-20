@@ -2,11 +2,14 @@
 
 SECTION .text
 
+; 외부에서 정의된 함수를 쓸 수 있도록 선언(Import)
+extern Main
+
 ;C언어에서 호출할 수 있도록 이름 노출
 global kInPortByte, kOutPortByte, kLoadGDTR, kLoadTR, kLoadIDTR
 global kEnableInterrupt, kDisableInterrupt, kReadRFLAGS
 global kReadTSC
-global kSwitchContext
+global kSwitchContext, kHlt
 
 ; port로부터 1byte 읽음
 ;  PARAM: port No.
@@ -201,3 +204,10 @@ kSwitchContext:
 		; Context 자료구조에서 레지스터를 복원
 		KLOADCONTEXT
 		iretq
+
+; 프로세서를 쉬게 함
+; 	PARAM : 없음
+kHlt:
+	hlt 	; 프로세서를 대기 상태로 진입시킴
+	hlt
+	ret
