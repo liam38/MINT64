@@ -58,6 +58,7 @@ static void kShowTaskList(const char* pcParameterBuffer);
 static void kKillTask(const char* pcParameterBuffer);
 static void kCPULoad(const char* pcParameterBuffer);
 static void kRunningTask(const char* pcParameterBuffer);
+static void kTestMutex(const char* pcParameterBuffer);
 
 //void kReadCPU(const char* pcParameterBuffer);
 

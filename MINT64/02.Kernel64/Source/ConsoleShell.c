@@ -6,6 +6,7 @@
 #include "RTC.h"
 #include "AssemblyUtility.h"
 #include "Task.h"
+#include "Synchronization.h"
 
 //#include "ModeSwitch.h"
 
@@ -24,9 +25,10 @@ SHELLCOMMANDENTRY gs_vstCommandTable[] = {
 		{"createtask", "Create Task, ex)createtask 1(type) 10(count)", kCreateTestTask},
 		{"changepriority", "Change Task Priority, ex)changepriority 1(ID) 2(Priority)", kChangeTaskPriority},
 		{"tasklist", "Show Task List", kShowTaskList},
-		{"killtask", "End Task, ex)killtask 1(ID)", kKillTask},
+		{"killtask", "End Task, ex)killtask 1(ID) or 0xffffffff(All Task)", kKillTask},
 		{"cpuload", "Show Processor Load", kCPULoad},
 		{"RunTask", "Show Running Task", kRunningTask},
+		{"testmutex", "Test Mutex Function", kTestMutex},
 };
 
 //==========================================================================================
@@ -368,7 +370,7 @@ void kTestTask(void) {
 // 		화면 테두리를 돌면서 문자를 출력
 static void kTestTask1(void) {
 	BYTE bData;
-	int i = 0, iX = 0, iY = 0, iMargin, j;
+	int i = 0, iX = 0, iY = 0, iMargin;
 	CHARACTER* pstScreen = (CHARACTER*)CONSOLE_VIDEOMEMORYADDRESS;
 	TCB* pstRunningTask;
 
@@ -377,7 +379,7 @@ static void kTestTask1(void) {
 	iMargin = (pstRunningTask->stLink.qwID & 0xFFFFFFFF) % 10;
 
 	// 화면 네 귀퉁이를 돌면서 문자 출력
-	for(j = 0; j < 20000; j++) {
+	while(1) {
 		switch(i) {
 		case 0:
 			iX++;
@@ -535,6 +537,8 @@ static void kKillTask(const char* pcParameterBuffer) {
 	PARAMETERLIST stList;
 	char vcID[30];
 	QWORD qwID;
+	TCB* pstTCB;
+	int i;
 
 	// 파라미터를 추출
 	kInitializeParameter(&stList, pcParameterBuffer);
@@ -546,11 +550,31 @@ static void kKillTask(const char* pcParameterBuffer) {
 	else
 		qwID = kAToI(vcID, 10);
 
-	kPrintf("Kill Task ID [0x%q] ", qwID);
-	if(kEndTask(qwID) == TRUE)
-		kPrintf("Success\n");
-	else
-		kPrintf("Fail\n");
+	// 특정 ID만 종료하는 경우
+	if(qwID != 0xFFFFFFFF) {
+		kPrintf("Kill Task ID [0x%q] ", qwID);
+		if(kEndTask(qwID) == TRUE) {
+			kPrintf("Success\n");
+		}
+		else
+			kPrintf("Fail\n");
+	}
+
+	// 콘솔 셸과 유휴 태스크를 제외하고 모든 태스크 종료
+	else {
+		for(i = 2; i < TASK_MAXCOUNT; i++) {
+			pstTCB = kGetTCBInTCBPool(i);
+			qwID = pstTCB->stLink.qwID;
+			if((qwID >> 32) != 0) {
+				kPrintf("Kill Task ID [0x%q] ", qwID);
+				if(kEndTask(qwID) == TRUE) {
+					kPrintf("Success\n");
+				}
+				else
+					kPrintf("Fail\n");
+			}
+		}
+	}
 }
 
 // 프로세서의 사용률을 표시
@@ -574,4 +598,58 @@ void kReadCPU(const char* pcParameterBuffer) {
 
 static void kRunningTask(const char* pcParameterBuffer) {
 	kPrintf("RunningTask ID : %q\n", kGetRunningTask()->stLink.qwID);
+}
+
+// Mutex 테스트용 뮤텍스와 변수
+static MUTEX gs_stMutex;
+static volatile QWORD gs_qwAdder;
+
+// Mutext를 테스트하는 태스크
+static void kPrintNumberTask(void) {
+	int i, j;
+	QWORD qwTickCount;
+
+	// 50ms 정도 대기하여 콘솔 셸이 출력하는 메시지와 겹치지 않도록 함
+	qwTickCount = kGetTickCount();
+	while((kGetTickCount() - qwTickCount) < 50) {
+		kSchedule();
+	}
+
+	// 루프를 돌면서 숫자 출력
+	for(i = 0; i < 5; i++) {
+		kLock(&(gs_stMutex));
+		kPrintf("Task ID [0x%q] Value[%d]\n", kGetRunningTask()->stLink.qwID, gs_qwAdder);
+
+		gs_qwAdder += 1;
+		kUnlock(&(gs_stMutex));
+
+		// 프로세서 소모를 늘리려고 추가한 코드
+		for(j = 0; j < 30000; j++);
+	}
+
+	// 모든 태스크가 종료할 때까지 1초(100ms) 정도 대기
+	qwTickCount = kGetTickCount();
+	while((kGetTickCount() - qwTickCount) < 1000)
+		kSchedule();
+
+	// 태스크 종료
+	kExitTask();
+}
+
+// Mutex를 테스트하는 태스크 생성
+static void kTestMutex(const char* pcParameterBuffer) {
+	int i;
+
+	gs_qwAdder = 1;
+
+	// Mutex 초기화
+	kInitializeMutex(&gs_stMutex);
+
+	for(i = 0; i < 3; i++) {
+		// Mutex를 테스트하는 태스크를 3개 생성
+		kCreateTask(TASK_FLAGS_LOW, (QWORD)kPrintNumberTask);
+	}
+
+	kPrintf("Wait Until %d Task End...\n", i);
+	kGetCh();
 }
