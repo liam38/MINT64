@@ -62,12 +62,18 @@
 
 // 태스크의 플래그
 #define TASK_FLAGS_ENDTASK 		0x8000000000000000
+#define TASK_FLAGS_SYSTEM 		0x4000000000000000
+#define TASK_FLAGS_PROCESS 		0x2000000000000000
+#define TASK_FLAGS_THREAD 		0x1000000000000000
 #define TASK_FLAGS_IDLE 		0x0800000000000000
 
 // 매크로 함수
 #define GETPRIORITY(x) 				((x) & 0xFF)
 #define SETPRIORITY(x, priority) 	((x) = ((x) & 0xFFFFFFFFFFFFFF00) | (priority))
 #define GETTCBOFFSET(x) 			((x) & 0xFFFFFFFF)
+  // 자식 thread link에 연결된 stThreadLink 정보에서 태스크 자료구조(TCB) 위치를
+  // 계산하여 반환하는 매크로
+#define GETTCBFROMTHREADLINK(x) 	(TCB*)((QWORD)(x) - offsetof(TCB, stThreadLink))
 
 // Struct
 #pragma pack(push, 1)
@@ -84,6 +90,20 @@ typedef struct kTaskControlBlockStruct {
 
 	// 플래그 (하위 8bit는 우선순위를 나타내는 field로 사용)
 	QWORD qwFlags;
+
+	// 프로세스 메모리 영역의 시작과 크기
+	void* pvMemoryAddress;
+	QWORD qwMemorySize;
+
+	//=================================================================
+	// 이하 스레드 정보
+	//=================================================================
+	// 자식 스레드의 위치와 ID
+	LISTLINK stThreadLink;
+	// 자식 스레드의 리스트
+	LIST stChildThreadList;
+	// 부모 프로세스의 ID
+	QWORD qwParrentProcessID;
 
 	//Context
 	CONTEXT stContext;
@@ -137,7 +157,7 @@ typedef struct kSchedulerStruct {
 static void kInitializeTCBPool(void);
 static TCB* kAllocateTCB(void);
 static void kFreeTCB(QWORD qwID);
-TCB* kCreateTask(QWORD qwFlags, QWORD qwEntryPointAddress);
+TCB* kCreateTask(QWORD qwFlags, void* pvMemoryAddress, QWORD qwMemorySize, QWORD qwEntryPointAddress);
 static void kSetUpTask(TCB* pstTCB, QWORD qwFlags, QWORD qwEntryPointAddress, void* pvStackAddress, QWORD qwStackSize);
 
 //==================================================================
@@ -161,6 +181,7 @@ int kGetTaskCount(void);
 TCB* kGetTCBInTCBPool(int iOffset);
 BOOL kIsTaskExist(QWORD qwID);
 QWORD kGetProcessorLoad(void);
+static TCB* kGetProcessByThread(TCB* pstThread);
 
 //==================================================================
 // IDLE Task 관련

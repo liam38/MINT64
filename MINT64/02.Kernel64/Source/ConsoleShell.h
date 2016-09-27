@@ -59,7 +59,9 @@ static void kKillTask(const char* pcParameterBuffer);
 static void kCPULoad(const char* pcParameterBuffer);
 static void kRunningTask(const char* pcParameterBuffer);
 static void kTestMutex(const char* pcParameterBuffer);
-
+static void kCreateThreadTask(void);
+static void kTestThread(const char* pcParameterBuffer);
+static void kShowMatrix(const char* pcParameterBuffer);
 //void kReadCPU(const char* pcParameterBuffer);
 
 #endif /*__CONSOLESHELL_H__*/
