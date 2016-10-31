@@ -48,9 +48,9 @@ kReadCPUID:
 ;IA-32e 모드로 전환, 64bit 커널 수행
 ;  PARAM 없음
 kSwitchAndExecute64bitKernel:
-  ;CR4's PAE bit 1로 설정
+  ;CR4's PAE, OSXMMEXCPT, OSFXSR bit 1로 설정
   mov eax, cr4
-  or eax, 0x20
+  or eax, 0x620 	; PAE (bit 5), OSXMMEXCPT (bit 10), OSFXSR (bit 9) 모두 1로 설정
   mov cr4, eax
 
   ;CR3 PML4 address, Enable Cache.
@@ -65,10 +65,12 @@ kSwitchAndExecute64bitKernel:
 
   wrmsr
 
-  ;CR0's NW bit, CD bit를 0으로 설정 / PG bit를 1로 설정
+  ; CR0's NW(bit 29), CD(bit 30)를 0으로 설정 / PG(bit 31)를 1로 설정
+  ; 캐시, 페이징 기능 활성화 및 TS(bit 3) = 1, EM(bit 2) = 0, MP(bit 1) = 1로 설정
+  ; FPU 활성화
   mov eax, cr0
-  or eax, 0xE0000000
-  xor eax, 0x60000000
+  or eax, 0xE000000E
+  xor eax, 0x60000004
   mov cr0, eax
 
   jmp 0x08:0x200000

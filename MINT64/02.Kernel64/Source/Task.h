@@ -83,6 +83,8 @@ typedef struct kContextStruct {
 	QWORD vqRegister[TASK_REGISTERCOUNT];
 }CONTEXT;
 
+// 태스크(프로세스와 스레드)의 상태를 관리하는 자료구조
+// FPU 콘텍스트가 추가되었기 때문에 자료구조의 크기가 16의 배수로 정렬되어야 함
 // Task의 상태를 관리하는 자료구조
 typedef struct kTaskControlBlockStruct {
 	// 다음 데이터의 위치와 ID
@@ -100,10 +102,14 @@ typedef struct kTaskControlBlockStruct {
 	//=================================================================
 	// 자식 스레드의 위치와 ID
 	LISTLINK stThreadLink;
-	// 자식 스레드의 리스트
-	LIST stChildThreadList;
 	// 부모 프로세스의 ID
 	QWORD qwParrentProcessID;
+
+	// FPU Context는 16의 배수로 정렬되어야 하므로, 앞으로 추가할 데이터는 현재 라인 아래에 추가.
+	QWORD vqwFPUContext[512 / 8];
+
+	// 자식 스레드의 리스트
+	LIST stChildThreadList;
 
 	//Context
 	CONTEXT stContext;
@@ -111,6 +117,9 @@ typedef struct kTaskControlBlockStruct {
 	//Stack의 address와 size
 	void* pvStackAddress;
 	QWORD qwStackSize;
+
+	// FPU 사용 여부
+	BOOL bFPUUsed;
 }TCB;
 
 // TCB Pool의 상태를 관리하는 자료구조
@@ -146,6 +155,9 @@ typedef struct kSchedulerStruct {
 
 	// IDLE Task에서 사용한 프로세서 시간
 	QWORD qwSpendProcessorTimeInIdleTask;
+
+	// 마지막으로 FPU를 사용한 태스크의 ID
+	QWORD qwLastFPUUsedTaskID;
 }SCHEDULER;
 
 #pragma pack(pop)
@@ -188,5 +200,11 @@ static TCB* kGetProcessByThread(TCB* pstThread);
 //==================================================================
 void kIdleTask(void);
 void kHaltProcessorByLoad(void);
+
+//==================================================================
+// FPU 관련
+//==================================================================
+QWORD kGetLastFPUUsedTaskID(void);
+void kSetLastFPUUsedTaskID(QWORD qwTaskID);
 
 #endif /*__TASK_H__*/
