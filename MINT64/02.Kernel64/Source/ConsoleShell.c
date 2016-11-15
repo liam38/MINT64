@@ -7,6 +7,8 @@
 #include "AssemblyUtility.h"
 #include "Task.h"
 #include "Synchronization.h"
+#include "DynamicMemory.h"
+#include "HardDisk.h"
 
 //#include "ModeSwitch.h"
 
@@ -32,6 +34,12 @@ SHELLCOMMANDENTRY gs_vstCommandTable[] = {
 		{"testthread", "Test Thread And Process Function", kTestThread},
 		{"showmatrix", "Show Matrix Screen", kShowMatrix},
 		{"testpie", "Test PIE Calculation", kTestPIE},
+		{"dynamicmeminfo", "Show Dynamic Memory Information", kShowDynamicMemoryInformation},
+		{"testseqalloc", "Test Sequential Allocation & Free", kTestSequentialAllocation},
+		{"testranalloc", "Test Random Allocation & Free", kTestRandomAllocation},
+		{"hddinfo", "Show HDD Information", kShowHDDInformation},
+		{"readsector", "Read HDD Sector, ex)readsector 0(LBA) 10(count)", kReadSector},
+		{"writesector", "Write HDD Sector, ex)writesector 0(LBA) 10(count)", kWriteSector},
 };
 
 //==========================================================================================
@@ -185,6 +193,16 @@ static void kHelp(const char* pcCommandBuffer) {
 		kGetCursor(&iCursorX, &iCursorY);
 		kSetCursor(iMaxCommandLength, iCursorY);
 		kPrintf(" - %s\n", gs_vstCommandTable[i].pcHelp);
+
+		// 목록이 많을 경우 나눠서 보여줌
+		if((i != 0) && ((i % 20) == 0)) {
+			kPrintf("Press any key to continue... ('q' is exit : ");
+			if(kGetCh() == 'q') {
+				kPrintf("\n");
+				break;
+			}
+			kPrintf("\n");
+		}
 	}
 }
 
@@ -829,4 +847,295 @@ static void kTestPIE(const char* pcParameterBuffer) {
 	for(i = 0; i < 100; i++) {
 		kCreateTask(TASK_FLAGS_LOW | TASK_FLAGS_THREAD, 0, 0, (QWORD)kFPUTestTask);
 	}
+}
+
+// 동적 메모리 정보를 표시
+static void kShowDynamicMemoryInformation(const char* pcParameterBuffer) {
+	QWORD qwStartAddress, qwTotalSize, qwMetaSize, qwUsedSize;
+
+	kGetDynamicMemoryInformation(&qwStartAddress, &qwTotalSize, &qwMetaSize, &qwUsedSize);
+
+	kPrintf("=============== Dynamic Memory Information ===============\n");
+	kPrintf("Start Address: [0x%Q]\n", qwStartAddress);
+	kPrintf("Total Size:	[0x%Q]byte, [%d]MB\n", qwTotalSize, qwTotalSize / 1024 /1024);
+	kPrintf("Meta Size: 	[0x%Q]byte, [%d]KB\n", qwMetaSize, qwMetaSize / 1024);
+	kPrintf("Used Size: 	[0x%Q]byte, [%d]KB\n", qwUsedSize, qwUsedSize / 1024);
+}
+
+// 모든 블록 리스트의 블록을 순차적으로 할당하고 해제하는 테스트
+static void kTestSequentialAllocation(const char* pcParameterBuffer) {
+	DYNAMICMEMORY* pstMemory;
+	long i, j, k;
+	QWORD* pqwBuffer;
+
+	kPrintf("=============== Dynamic Memory Test ==============\n");
+	pstMemory = kGetDynamicMemoryManager();
+
+	for(i = 0; i < pstMemory->iMaxLevelCount; i++) {
+		kPrintf("Block List [%d] Test Start\n", i);
+		kPrintf("Allocation And Compare: ");
+
+		// 모든 블록을 할당받아서 값을 채운 후 검사
+		for(j = 0; j < (pstMemory->iBlockCountOfSmallestBlock >> i); j++) {
+			pqwBuffer = kAllocateMemory(DYNAMICMEMORY_MIN_SIZE << i);
+			if(pqwBuffer == NULL) {
+				kPrintf("\nAllocation Fail\n");
+				return ;
+			}
+
+			// 값을 채운 후 다시 검사
+			for(k = 0; k < (DYNAMICMEMORY_MIN_SIZE << i) / 8; k++) {
+				pqwBuffer[k] = k;
+			}
+
+			for(k = 0; k < (DYNAMICMEMORY_MIN_SIZE << i) / 8; k++) {
+				if(pqwBuffer[k] != k) {
+					kPrintf("\nCompare Fail\n");
+					return;
+				}
+			}
+
+			// 진행과정을 . 으로 표시
+			kPrintf(".");
+		}
+
+		kPrintf("\nFree: ");
+		// 할당받은 블록을 모두 반환
+		for(j = 0; j < (pstMemory->iBlockCountOfSmallestBlock >> i); j++) {
+			if(kFreeMemory((void*)(pstMemory->qwStartAddress + (DYNAMICMEMORY_MIN_SIZE << i ) * j)) == FALSE) {
+				kPrintf("\nFree Fail\n");
+				return;
+			}
+			// 진행과정을 . 으로 표시
+			kPrintf(".");
+		}
+		kPrintf("\n");
+	}
+	kPrintf("Test Complete~!!!\n");
+}
+
+// 임의로 메모리를 할당하고 해제하는 것을 반복하는 태스크
+static void kRandomAllocationTask(void) {
+	TCB* pstTask;
+	QWORD qwMemorySize;
+	char vcBuffer[200];
+	BYTE* pbAllocationBuffer;
+	int i, j;
+	int iY;
+
+	pstTask = kGetRunningTask();
+	iY = (pstTask->stLink.qwID) % 15 + 9;
+
+	for(j = 0; j < 10; j++) {
+		// 1KB ~ 32MB 까지 할당
+		do {
+			qwMemorySize = ((kRandom() % (32 * 1024)) + 1) * 1024;
+			pbAllocationBuffer = kAllocateMemory(qwMemorySize);
+
+			// 만일 버퍼를 할당받지 못하면 다른 태스크가 메모리를 사용하고
+			// 있을 수 있으므로 잠시 대기한 후 다시 시도
+			if(pbAllocationBuffer == 0) {
+				kSleep(1);
+			}
+		}while(pbAllocationBuffer == 0);
+
+		kSPrintf(vcBuffer, "|Address: [0x%Q] Size: [0x%Q] Allocation Success", pbAllocationBuffer, qwMemorySize);
+		// 자신의 ID를 Y 좌표로 하여 출력
+		kPrintStringXY(20, iY, vcBuffer);
+		kSleep(200);
+
+		// 버퍼를 반으로 나눠서 랜덤한 데이터를 똑같이 채움
+		kSPrintf(vcBuffer, "|Address: [0x%Q] Size: [0x%Q] Data Write... 	", pbAllocationBuffer, qwMemorySize);
+		kPrintStringXY(20, iY, vcBuffer);
+		for(i = 0; i < qwMemorySize / 2; i++) {
+			pbAllocationBuffer[i] = kRandom() & 0xFF;
+			pbAllocationBuffer[i + (qwMemorySize / 2)] = pbAllocationBuffer[i];
+		}
+		kSleep(200);
+
+		// 채운 데이터가 정상적인지 다시 확인
+		kSPrintf(vcBuffer, "|Address: [0x%Q] Size: [0x%Q] Data Verify... 	", pbAllocationBuffer, qwMemorySize);
+		kPrintStringXY(20, iY, vcBuffer);
+		for(i = 0; i < qwMemorySize / 2; i++) {
+			if(pbAllocationBuffer[i] != pbAllocationBuffer[i + (qwMemorySize / 2)]) {
+				kPrintf("Task ID[0x%Q] Verify Fail\n", pstTask->stLink.qwID);
+				kExitTask();
+			}
+		}
+		kFreeMemory(pbAllocationBuffer);
+		kSleep(200);
+	}
+
+	kExitTask();
+}
+
+// 태스크를 여러개 생성하여 임의의 메모리를 할당하고 해제하는 것을 반복하는 테스트
+static void kTestRandomAllocation(const char* pcParameterBuffer) {
+	int i;
+
+	for(i = 0; i < 1000; i++) {
+		kCreateTask(TASK_FLAGS_LOWEST | TASK_FLAGS_THREAD, 0, 0, (QWORD)kRandomAllocationTask);
+	}
+}
+
+// 하드 디스크의 정보를 표시
+static void kShowHDDInformation(const char* pcParameterBuffer) {
+	HDDINFORMATION stHDD;
+	char vcBuffer[100];
+
+	// 하드 디스크의 정보를 읽음
+	if(kReadHDDInformation(TRUE, TRUE, &stHDD) == FALSE) {
+		kPrintf("HDD Information Read Fail\n");
+		return ;
+	}
+
+	kPrintf("============== Primary Master HDD Information ==============\n");
+
+	// 모델 번호 출력
+	kMemCpy(vcBuffer, stHDD.vwModelNumber, sizeof(stHDD.vwModelNumber));
+	vcBuffer[sizeof(stHDD.vwModelNumber) - 1 ] = '\0';
+	kPrintf("Model Number:\t %s\n", vcBuffer);
+
+	// 시리얼 번호 출력
+	kMemCpy(vcBuffer, stHDD.vwSerialNumber, sizeof(stHDD.vwSerialNumber));
+	vcBuffer[sizeof(stHDD.vwSerialNumber) - 1 ] = '\0';
+	kPrintf("Serial Number:\t %s\n", vcBuffer);
+
+	// 헤드, 실린더, 실린더 당 섹터 수를 출력
+	kPrintf("Head Count:\t %d\n", stHDD.wNumberOfHead);
+	kPrintf("Cylinder Count:\t %d\n", stHDD.wNumberOfCylinder);
+	kPrintf("Sector Count:\t %d\n", stHDD.wNumberOfSectorPerCylinder);
+
+	// 총 섹터 수 출력
+	kPrintf("Total Sector:\t %d Sector, %dMB\n", stHDD.dwTotalSectors, stHDD.dwTotalSectors / 2 / 1024);
+}
+
+// 하드 디스크에서 파라미터로 넘어온 LBA 어드레스부터 섹터 수만큼 읽음
+static void kReadSector(const char* pcParameterBuffer) {
+	PARAMETERLIST stList;
+	char vcLBA[50], vcSectorCount[50];
+	DWORD dwLBA;
+	int iSectorCount;
+	char* pcBuffer;
+	int i, j;
+	BYTE bData;
+	BOOL bExit = FALSE;
+
+	// 파라미터 리스트를 초기화하여 LBA 어드레스와 섹터 수 추출
+	kInitializeParameter(&stList, pcParameterBuffer);
+	if((kGetNextParameter(&stList, vcLBA) == 0) || (kGetNextParameter(&stList, vcSectorCount) == 0)) {
+		kPrintf("ex) readsector 0(LBA) 10(count)\n");
+		return ;
+	}
+	dwLBA = kAToI(vcLBA, 10);
+	iSectorCount = kAToI(vcSectorCount, 10);
+
+	// 섹터 수만큼 메모리를 할당 받아 읽기 수행
+	pcBuffer = kAllocateMemory(iSectorCount * 512);
+	if(kReadHDDSector(TRUE, TRUE, dwLBA, iSectorCount, pcBuffer) == iSectorCount) {
+		kPrintf("LBA [%d], [%d] Sector Read Success~!!", dwLBA, iSectorCount);
+		// 데이터 버퍼의 내용을 출력
+		for(j = 0; j < iSectorCount; j++) {
+			for (i = 0; i < 512; i++) {
+				if(!( (j==0) && (i==0) ) && ( (i % 256) == 0) ) {
+					kPrintf("\nPress any key to continue... ('q' is exit : ");
+					if(kGetCh() == 'q') {
+						bExit = TRUE;
+						break;
+					}
+				}
+
+				if((i % 16) == 0) {
+					kPrintf("\n[LBA:%d, Offset:%d]\t| ", dwLBA + j, i);
+				}
+
+				// 모두 두 자리로 표시하려고 16보다 작은 경우 0을 추가
+				bData = pcBuffer[j * 512 + i] & 0xFF;
+				if(bData < 16) {
+					kPrintf("0");
+				}
+				kPrintf("%X ", bData);
+			}
+
+			if(bExit == TRUE) {
+				break;
+			}
+		}
+		kPrintf("\n");
+	}
+	else {
+		kPrintf("Read Fail\n");
+	}
+
+	kFreeMemory(pcBuffer);
+}
+
+// 하드 디스크에서 파라미터로 넘어온 LBA 어드레스부터 섹터 수만큼 씀
+static void kWriteSector(const char* pcParameterBuffer) {
+	PARAMETERLIST stList;
+	char vcLBA[50], vcSectorCount[50];
+	DWORD dwLBA;
+	int iSectorCount;
+	char* pcBuffer;
+	int i, j;
+	BOOL bExit = FALSE;
+	BYTE bData;
+	static DWORD s_dwWriteCount = 0;
+
+	// 파라미터 리스트를 초기화하여 LBA 어드레스와 섹터수 추출
+	kInitializeParameter(&stList, pcParameterBuffer);
+	if((kGetNextParameter(&stList, vcLBA) == 0) || (kGetNextParameter(&stList, vcSectorCount) == 0)) {
+		kPrintf("ex) writesector 0(LBA) 10(count)\n");
+		return ;
+	}
+	dwLBA = kAToI(vcLBA, 10);
+	iSectorCount = kAToI(vcSectorCount, 10);
+
+	s_dwWriteCount++;
+	// 버퍼를 할당받아 데이터를 채움
+	// 패턴은 4바이트의 LBA 어드레스와 4바이트의 쓰기가 수행된 횟수로 생성
+	pcBuffer = kAllocateMemory(iSectorCount * 512);
+	for(j = 0; j < iSectorCount; j++) {
+		for(i = 0; i < 512; i += 8) {
+			*(DWORD*)&(pcBuffer[j * 512 + i]) = dwLBA + j;
+			*(DWORD*)&(pcBuffer[j * 512 + i + 4]) = s_dwWriteCount;
+		}
+	}
+
+	// 쓰기 수행
+	if(kWriteHDDSector(TRUE, TRUE, dwLBA, iSectorCount, pcBuffer) != iSectorCount) {
+		kPrintf("Write Fail\n");
+		return ;
+	}
+	kPrintf("LBA [%d], [%d] Sector Read Success~!!", dwLBA, iSectorCount);
+
+	// 데이터 버퍼의 내용을 출력
+	for(j = 0; j < iSectorCount; j++) {
+		for(i = 0; i < 512; i++) {
+			if(!( (j==0) && (i==0) ) && ((i % 256) == 0)) {
+				kPrintf("\nPress any key to continue... ('q' is exit): ");
+				if(kGetCh() == 'q') {
+					bExit = TRUE;
+					break;
+				}
+			}
+
+			if((i % 16) == 0) {
+				kPrintf("\n[LBA:%d, Offset:%d]\t| ", dwLBA + j, i);
+			}
+
+			// 모두 두 자리로 표시하려고 16보다 작은 경우 0을 추가
+			bData = pcBuffer[j * 512 + i] & 0xFF;
+			if(bData < 16) {
+				kPrintf("0");
+			}
+			kPrintf("%X ", bData);
+		}
+
+		if(bExit == TRUE) {
+			break;
+		}
+	}
+	kPrintf("\n");
+	kFreeMemory(pcBuffer);
 }

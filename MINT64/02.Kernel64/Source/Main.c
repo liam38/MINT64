@@ -7,6 +7,8 @@
 #include "ConsoleShell.h"
 #include "Task.h"
 #include "PIT.h"
+#include "DynamicMemory.h"
+#include "HardDisk.h"
 
 //void kPrintfString(int iX, int iY, const char* pcString);
 
@@ -45,6 +47,12 @@ void Main(void) {
 	kPrintf("TCB Pool And Scheduler Initialize...........[Pass]\n");
 	iCursorY++;
 	kInitializeScheduler();
+
+	// 동적 메모리 초기화
+	kPrintf("Dynamic Memory Initialize...................[Pass]\n");
+	iCursorY++;
+	kInitializeDynamicMemory();
+
 	// 1ms당 한 번씩 인터럽트가 발생하도록 설정
 	kInitializePIT(MSTOCOUNT(1), 1);
 
@@ -70,6 +78,17 @@ void Main(void) {
 	kEnableInterrupt();
 	kSetCursor(45, iCursorY++);
 	kPrintf("Pass\n");
+
+	// 하드 디스크를 초기화
+	kPrintf("HDD Initialize..............................[    ]");
+	if(kInitializeHDD() == TRUE) {
+		kSetCursor(45, iCursorY++);
+		kPrintf("Pass\n");
+	}
+	else {
+		kSetCursor(45, iCursorY++);
+		kPrintf("Fail\n");
+	}
 
 	// Idle Task를 생성하고 shell을 시작
 	kCreateTask(TASK_FLAGS_LOWEST | TASK_FLAGS_THREAD | TASK_FLAGS_SYSTEM | TASK_FLAGS_IDLE, 0, 0, (QWORD)kIdleTask);
