@@ -3,6 +3,7 @@
 SECTION .text
 
 extern kCommonExceptionHandler, kCommonInterruptHandler, kKeyboardHandler
+extern kTimerHandler, kDeviceNotAvailableHandler, kHDDHandler
 
 ; Exceipton ISR
 global kISRDivideError, kISRDebug, kISRNMI, kISRBreakPoint, kISROverflow
@@ -85,8 +86,8 @@ global kISRMouse, kISRCoprocessor, kISRHDD1, kISRHDD2, kISRETCInterrupt
 kISRDivideError:
 	KSAVECONTEXT
 
-	mov rdi, 0
-	call kCommonExceptionHandler
+	mov rdi, 0 	; 64bit(IA-32e mode)에서 parameter : Interrupt Vector value.
+	call kCommonExceptionHandler 	; handler 종료시 해당 interrupt에 EOI를 보내주기 위함.
 
 	KLOADCONTEXT
 	iretq
@@ -156,7 +157,7 @@ kISRDeviceNotAvailable:
 	KSAVECONTEXT
 
 	mov rdi, 7
-	call kCommonExceptionHandler
+	call kDeviceNotAvailableHandler
 
 	KLOADCONTEXT
 	iretq
@@ -313,7 +314,7 @@ kISRTimer:
 	KSAVECONTEXT
 
 	mov rdi, 32
-	call kCommonInterruptHandler
+	call kTimerHandler
 
 	KLOADCONTEXT
 	iretq
@@ -453,7 +454,7 @@ kISRHDD1:
 	KSAVECONTEXT
 
 	mov rdi, 46
-	call kCommonInterruptHandler
+	call kHDDHandler
 
 	KLOADCONTEXT
 	iretq
@@ -463,7 +464,7 @@ kISRHDD2:
 	KSAVECONTEXT
 
 	mov rdi, 47
-	call kCommonInterruptHandler
+	call kHDDHandler
 
 	KLOADCONTEXT
 	iretq

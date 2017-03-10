@@ -2,6 +2,8 @@
 #include "AssemblyUtility.h"
 #include "Keyboard.h"
 #include "Queue.h"
+#include "Synchronization.h"
+
 //////////////////////////////
 //키보드 컨트롤러와 키보드 제어에 관련된 함수
 //////////////////////////////
@@ -467,13 +469,13 @@ BOOL kConvertScanCodeAndPutQueue(BYTE bScanCode) {
 
 	// 스캔 코드를 ASCII 코드와 키 상태로 변환하여 키 데이터에 삽입
 	if(kConvertScanCodeToASCIICode(bScanCode, &(stData.bASCIICode), &(stData.bFlags)) == TRUE) {
-		bPreviousInterrupt = kSetInterruptFlag(FALSE);
+		bPreviousInterrupt = kLockForSystemData();
 
 		// 키 큐에 삽입
 		bResult = kPutQueue(&gs_stKeyQueue, &stData);
 
 		// 이전 Interrupt Flag 복원
-		kSetInterruptFlag(bPreviousInterrupt);
+		kUnlockForSystemData(bPreviousInterrupt);
 	}
 
 	return bResult;
@@ -489,12 +491,12 @@ BOOL kGetKeyFromKeyQueue(KEYDATA* pstData) {
 		return FALSE;
 
 	// 인터럽트 불가
-	bPreviousInterrupt = kSetInterruptFlag(FALSE);
+	bPreviousInterrupt = kLockForSystemData();
 
 	// 키 큐에서 키 데이터를 제거
 	bResult = kGetQueue(&gs_stKeyQueue, pstData);
 
 	// 이전 Interrupt Flag 복원
-	kSetInterruptFlag(bPreviousInterrupt);
+	kUnlockForSystemData(bPreviousInterrupt);
 	return bResult;
 }

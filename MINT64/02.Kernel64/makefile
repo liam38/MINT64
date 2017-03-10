@@ -30,7 +30,7 @@ Kernel64.bin: ExecuteInternalBuild
 	
 clean:
 	rm -f *.bin
-	rm -f $(OBJECTDIRECTOry)/*.*
+	rm -f $(OBJECTDIRECTORY)/*.*
 	
 #############################################
 # Make에 의해 다시 호출되는 부분, Temp 디렉터리를 기준으로 수행

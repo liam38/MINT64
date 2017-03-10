@@ -4,7 +4,8 @@
 SECTION .text
 
   jmp 0x07C0:START
-  totalSectorCount: 	dw 2
+  totalSectorCount: 	dw 0x02
+  kernel32SectorCount:	dw 0x02
 
 START:
   mov ax, 0x07C0
@@ -22,7 +23,7 @@ START:
 
   SCREEN_CLEAR_LOOP:
     mov byte [es:si], 0
-    mov byte [es:si+1], 0x0A
+    mov byte [es:si+1], 0x07
 
     add si, 2
 

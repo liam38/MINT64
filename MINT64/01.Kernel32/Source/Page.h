@@ -3,18 +3,23 @@
 
 #include "Types.h"
 
-#define PAGE_FLAGS_P		0x00000001
-#define PAGE_FLAGS_RW		0x00000002
-#define PAGE_FLAGS_US		0x00000004
-#define PAGE_FLAGS_PWT		0x00000008
-#define PAGE_FLAGS_PCD		0x00000010
-#define PAGE_FLAGS_A		0x00000020
-#define PAGE_FLAGS_D		0x00000040
-#define PAGE_FLAGS_PS		0x00000080
-#define PAGE_FLAGS_G		0x00000100
-#define PAGE_FLAGS_PAT		0x00001000
-#define PAGE_FLAGS_EXB		0x80000000
+// 하위 32bit 용 속성 field
+#define PAGE_FLAGS_P		0x00000001 // P   : present
+#define PAGE_FLAGS_RW		0x00000002 // RW  : Read/Write
+#define PAGE_FLAGS_US		0x00000004 // US  : User/Supervisor
+#define PAGE_FLAGS_PWT		0x00000008 // PWT : Page Level Write-through
+#define PAGE_FLAGS_PCD		0x00000010 // PCD : Page Level Cache Disable
+#define PAGE_FLAGS_A		0x00000020 // A   : Accessed
+#define PAGE_FLAGS_D		0x00000040 // D   : Dirty
+#define PAGE_FLAGS_PS		0x00000080 // PS  : Page Size
+#define PAGE_FLAGS_G		0x00000100 // G   : Global
+#define PAGE_FLAGS_PAT		0x00001000 // PAT : Page Attribute Table Index
+
+// 상위 32bit 용 속성 field
+#define PAGE_FLAGS_EXB		0x80000000 // EXB : Execute Disable bit
+// 실제 속성은 아니지만, 편의를 위해 정의함. Flags_default.
 #define PAGE_FLAGS_DEFAULT	( PAGE_FLAGS_P | PAGE_FLAGS_RW )
+
 #define PAGE_TABLESIZE		0x1000
 #define PAGE_MAXENTRYCOUNT	512
 #define PAGE_DEFAULTSIZE	0x200000

@@ -92,6 +92,7 @@ typedef struct kKeyDataStruct {
 	// 키 상태를 저장하는 플래그 (눌림/떨어짐/확장 키 여부)
 	BYTE bFlags;
 }KEYDATA;
+
 //함수
 BOOL kIsOutputBufferFull(void);
 BOOL kIsInputBufferFull(void);
